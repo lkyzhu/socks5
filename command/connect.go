@@ -27,7 +27,6 @@ func (self *handler) Connect(ctx *context.Context, conn net.Conn, request *proto
 	bnd := proto.Addr{
 		Type: proto.ATYP_IPV4,
 	}
-
 	local := dest.LocalAddr()
 	if tcpAddr, ok := local.(*net.TCPAddr); ok {
 		bnd.IP = tcpAddr.IP
@@ -36,6 +35,7 @@ func (self *handler) Connect(ctx *context.Context, conn net.Conn, request *proto
 		bnd.IP = udpAddr.IP
 		bnd.Port = uint16(udpAddr.Port)
 	}
+	self.SendReply(conn, proto.Success, bnd)
 
 	// start proxy
 	self.proxy(ctx, conn, dest)
@@ -48,14 +48,25 @@ func (self *handler) proxy(ctx *context.Context, src, dest net.Conn) {
 	ctx.Logger.Debugf("start proxy[%v<-->%v]\n", src.RemoteAddr().String(), dest.RemoteAddr().String())
 	wg.Add(1)
 	go func() {
-		io.Copy(dest, src)
-		wg.Done()
+		defer wg.Done()
+		size, err := io.Copy(dest, src)
+		if err != nil {
+			ctx.Logger.WithError(err).Errorf("proxy[%v<-->%v] receive failed\n", src.RemoteAddr().String(), dest.RemoteAddr().String())
+			return
+		}
+		ctx.Logger.Debugf("proxy[%v<-->%v] receive data:%v\n", src.RemoteAddr().String(), dest.RemoteAddr().String(), size)
+
 	}()
 
 	wg.Add(1)
 	go func() {
-		io.Copy(src, dest)
-		wg.Done()
+		defer wg.Done()
+		size, err := io.Copy(src, dest)
+		if err != nil {
+			ctx.Logger.WithError(err).Errorf("proxy[%v<-->%v] receive failed\n", src.RemoteAddr().String(), dest.RemoteAddr().String())
+			return
+		}
+		ctx.Logger.Debugf("proxy[%v<-->%v] receive data:%v\n", src.RemoteAddr().String(), dest.RemoteAddr().String(), size)
 	}()
 
 	wg.Wait()

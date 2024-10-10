@@ -27,6 +27,6 @@ func NewContext() *Context {
 		Id: id,
 	}
 
-	ctx.Logger = logrus.WithContext(ctx)
+	ctx.Logger = logrus.WithField("id", id)
 	return ctx
 }

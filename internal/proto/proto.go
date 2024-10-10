@@ -258,7 +258,7 @@ func (self *Addr) Write(buf *bufio.Writer) error {
 	switch self.Type {
 	case ATYP_IPV4:
 		tmp := make([]byte, net.IPv4len+2)
-		copy(tmp, self.IP[net.IPv6len-net.IPv4len:])
+		copy(tmp, self.IP)
 		binary.BigEndian.PutUint16(tmp[net.IPv4len:], self.Port)
 		_, err := buf.Write(tmp)
 		return err
